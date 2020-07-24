@@ -11,7 +11,7 @@ The steps below are created following the ibm cloud docs below. Refer to these f
 - A [Managed openshift cluster (ROKS) on IBM Cloud](https://cloud.ibm.com/docs/openshift?topic=openshift-clusters) to install portworx (atleast 3 workers). Refer 
     > [About Portworx](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#about-portworx) for the preferred worker node flavor and type. 
 
-    > NOTE: ROKS cluster that has both public and private endpoints is used in setup. Setup might vary if private-only cluster is used. Refer [Managed OpenShift on IBM Cloud VPC cluster service architecture](https://cloud.ibm.com/docs/openshift?topic=openshift-service-arch#service-architecture_vpc) for more details
+    > NOTE: ROKS cluster that has both public and private endpoints is used in this setup. Some steps might vary if private-only cluster is used. Refer [Managed OpenShift on IBM Cloud VPC cluster service architecture](https://cloud.ibm.com/docs/openshift?topic=openshift-service-arch#service-architecture_vpc) for more details on the architecture of VPC Clusters
 
     As of now, on VPC as baremetal servers are not supported, SDS worker node options are not available. For Non-SDS worker nodes on Virtual machines, `b2.16x64` or better is preferred for portworx. 
 - [ibmcloud cli](https://cloud.ibm.com/docs/cli?topic=cli-install-ibmcloud-cli#shell_install)
