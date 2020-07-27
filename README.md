@@ -170,7 +170,7 @@ After portworx is setup for encryption using KP, check the section [Enable per v
 ### Provisioning
 > Refer [Installing Portworx in your cluster](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#install_portworx)
 - Provision portworx service from IBM Cloud Catalog
-- Choose the desired plan (DR Plan allows to backup to IBM COS)
+- Choose the desired plan (DR Plan provides some additional capabilities and also allows backup to IBM COS - See details [here](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#px-dr)
 - Fill in all the details. For guidance, [Install Portworx](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#install_portworx)
   For quick dev setup, you can proceed without encryption and leave the volume encryption key to default value 
     > For volume encryption, refer - [Setting up volume encryption with IBM Key Protect](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#encrypt_volumes).
