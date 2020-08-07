@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: restore-from-snapshot-pvc
+  annotations:
+    snapshot.alpha.kubernetes.io/snapshot: log-test-stateful-0-snapshot-1
+    #stork.libopenstorage.org/snapshot-source-namespace: <namespace> # Specify if the snapshot exists in another namespace
+spec:
+  accessModes:
+     - ReadWriteOnce
+  storageClassName: stork-snapshot-sc
+  resources:
+    requests:
+      storage: 1Gi

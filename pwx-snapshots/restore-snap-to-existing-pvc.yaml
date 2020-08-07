@@ -1,0 +1,8 @@
+ apiVersion: stork.libopenstorage.org/v1alpha1
+ kind: VolumeSnapshotRestore
+ metadata:
+  # the name should be the existing pvc you to restore to
+   name: datelog-test-stateful-0
+ spec:
+   sourceName: log-test-stateful-0-snapshot-1
+   sourceNamespace: pb-pwx-test
