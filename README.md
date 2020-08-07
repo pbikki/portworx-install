@@ -1,4 +1,3 @@
-
 # portworx-install
 This document provides instructions to install portworx on VPC Gen2 managed OpenShift Cluster on IBM Cloud (Similar steps can be followed for VPC IKS cluster).
 
@@ -11,6 +10,8 @@ The steps below are created following the ibm cloud docs below. Refer to these f
 ## Prerequisites
 - A [Managed openshift cluster (ROKS) on IBM Cloud](https://cloud.ibm.com/docs/openshift?topic=openshift-clusters) to install portworx (atleast 3 workers). Refer 
     > [About Portworx](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#about-portworx) for the preferred worker node flavor and type. 
+
+    > NOTE: ROKS cluster that has both public and private endpoints is used in this setup. Some steps might vary if private-only cluster is used. Refer [Managed OpenShift on IBM Cloud VPC cluster service architecture](https://cloud.ibm.com/docs/openshift?topic=openshift-service-arch#service-architecture_vpc) for more details on the architecture of VPC Clusters
 
     As of now, on VPC as baremetal servers are not supported, SDS worker node options are not available. For Non-SDS worker nodes on Virtual machines, `b2.16x64` or better is preferred for portworx. 
 - [ibmcloud cli](https://cloud.ibm.com/docs/cli?topic=cli-install-ibmcloud-cli#shell_install)
@@ -85,23 +86,110 @@ Repeat this step for all volumes. Make sure to attach the volume and worker form
     ▶ oc create -f pwx-etcd-secret.yaml
     ```
 
+## Encryption with KeyProtect
+<details>
+<summary> (Click to Expand) Setup portworx to use IBM Key Protect for encryption </summary>
+
+
+Install can be configured to enable encryption of volumes with IBM Key Protect (KP) during provisioning or it can be enabled later.
+In either case, a KeyProtect service instance and a root key should be created. 
+
+Follow the steps 1 through 11 [Setup KeyProtect Instance for volume encryption with Portworx](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#setup_encryption) and proceed to [Portworx install](#install-portworx) to enable encryption using IBM KP during provisioning
+
+### Enable encryption on existing portworx setup
+If encryption with IBM KP has not been enabled during provisioning, it can be setup with an existing Portworx setup on OpenShift cluster by editing the `portworx` daemonset. Step 12 from [Setup KeyProtect Instance for volume encryption with Portworx](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#setup_encryption)
+
+```
+▶ oc edit daemonset portworx -n kube-system
+```
+Replace the `secret_type` argument value to be `ibm-kp` from the `containers` spec as below:
+
+```
+containers:
+- args:
+  - -A
+  - -f
+  - -k
+  - etcd:<REDACTED>
+  - -c
+  - px-storage-cluster
+  - -secret_type
+  - ibm-kp
+  - -userpwd
+  - $(ETCD_USERNAME):$(ETCD_PASSWORD)
+  - -ca
+  - /etc/pwx/etcdcerts/ca.pem
+  - -r
+  - "17001"
+  - -x
+  - kubernetes
+```
+Portworx pods will be restarted automatically after the daemonset is edited
+
+View `config.json` from one of the portworx pods to verify if the change is made. The `"secret_type": "ibm-kp"` should be added in the secret section 
+
+```
+▶ oc exec -it portworx-r4bdw  -n kube-system bash
+[root@kube-bs6tcs3d0v6dus9f0n2g-<cluster>-default-00000307 /]# cd etc/pwx
+[root@kube-bs6tcs3d0v6dus9f0n2g-<cluster>-default-00000307 pwx]# cat config.json 
+{
+    "alertingurl": "",
+    "cafile": "/etc/pwx/etcdcerts/ca.pem",
+    "clusterid": "px-storage-cluster",
+    "dataiface": "",
+    "kvdb": [
+        "etcd:<REDACTED>"
+    ],
+    "mgtiface": "",
+    "password": "<REDACTED>",
+    "scheduler": "kubernetes",
+    "secret": {
+        "cluster_secret_key": "",
+        "secret_type": "ibm-kp"
+    },
+    "storage": {
+        "cache": [],
+        "devices": [
+            "/dev/vdd"
+        ],
+        "journal_dev": "",
+        "kvdb_dev": "",
+        "max_storage_nodes_per_zone": 0,
+        "rt_opts": {},
+        "system_metadata_dev": ""
+    },
+    "username": "<REDACTED>",
+    "version": "1.0"
+}
+```
+</details>
+
+After portworx is setup for encryption using KP, check the section [Enable per volume encryption](#enable-per-volume-encryption)
+
 ## Install portworx
 ### Provisioning
 > Refer [Installing Portworx in your cluster](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#install_portworx)
 - Provision portworx service from IBM Cloud Catalog
-- Choose the desired plan (DR Plan allows to backup to IBM COS)
-- Fill in all the details. 
+- Choose the desired plan (DR Plan provides some additional capabilities and also allows backup to IBM COS - See details [here](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#px-dr)
+- Fill in all the details. For guidance, [Install Portworx](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#install_portworx)
   For quick dev setup, you can proceed without encryption and leave the volume encryption key to default value 
     > For volume encryption, refer - [Setting up volume encryption with IBM Key Protect](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#encrypt_volumes).
+
+    To choose **Portworx secret store type**, see below info from ibm cloud docs
+    
+    >   Kubernetes Secret: Choose this option if you want to store your own custom key to encrypt your volumes in a Kubernetes Secret in your cluster. The secret must not be present before you install Portworx. You can create the secret after you install Portworx. For more information, see the Portworx documentation.
+    
+    > IBM Key Protect: Choose this option if you want to use root keys in IBM Key Protect to encrypt your volumes. Make sure that you follow the instructions to create your IBM Key Protect service instance, and to store the credentials for how to access your service instance in a Kubernetes secret in the portworx project before you install Portworx.
+    
 - Enter [iam user apikey](https://cloud.ibm.com/docs/account?topic=account-userapikey#create_user_key); select the resource group, list of clusters that the user has access to are shown. Choose the cluster to install portworx on
 
 
 
-### Verify Install
+### Verify Portworx Install
 - Connect to the cluster 
-```
-▶ ibmcloud oc cluster config -c <cluster-name> --admin
-```
+    ```
+    ▶ ibmcloud oc cluster config -c <cluster-name> --admin
+    ```
 > Refer [Connecting to the cluster from the CLI](https://cloud.ibm.com/docs/openshift?topic=openshift-access_cluster#access_oc_cli)
 
 - Verify install
@@ -188,6 +276,8 @@ Repeat this step for all volumes. Make sure to attach the volume and worker form
 
 ## Validate using a sample pod
 
+> Refer [Creating Portworx Volumes](https://cloud.ibm.com/docs/openshift?topic=openshift-portworx#add_portworx_storage)
+
 Use dynamic provisioning to automatically create Portworx volume by creating a PVC and, optionally a StorageClass.
 ```
 ▶ mkdir -p ./portworx
@@ -202,7 +292,6 @@ metadata:
 provisioner: kubernetes.io/portworx-volume
 parameters:
   repl: "1"
-  priority_io: "high"
   io_profile: "random"
 EOF
 ````
@@ -315,6 +404,128 @@ Delete the resources created for validation
 ▶ oc delete -f ./portworx/custom-sc.yaml
 ▶ oc delete -f ./portworx/pvc.yaml
 ```
+
+## Enable per volume encryption
+
+
+There are two ways to enable per volume encryption  
+<details>
+<summary>With Storage Class </summary>
+
+- Create secure storage class with `secure` parameter set to `true`
+
+  ```yaml
+  ▶ cat <<EOF > ./portworx/custom-secure-sc.yaml
+  kind: StorageClass
+  apiVersion: storage.k8s.io/v1
+  metadata:
+    name: pwx-custom-random-secure-sc
+  provisioner: kubernetes.io/portworx-volume
+  parameters:
+    repl: "1"
+    io_profile: "random"
+    secure: "true"
+  EOF
+  ```
+
+  ```
+  ▶ oc create -f ./portworx/custom-secure-sc.yaml 
+  ```
+
+- Create a PVC to use the secure storage class. The volumes created by PVCs that use the secure storage class will be encrypted
+
+  ```yaml
+  ▶ cat <<EOF > ./portworx/pvc-secured-through-sc.yaml
+  kind: PersistentVolumeClaim
+  apiVersion: v1
+  metadata:
+    name: pwx-test-pvc-secured-through-sc
+  spec:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 1Gi
+    storageClassName: pwx-custom-random-secure-sc
+  EOF
+  ````
+
+  ```
+  ▶ oc create -f ./portworx/pvc-secured-through-sc.yaml 
+  ```
+</details>
+
+<details>
+<summary>With PVC </summary>
+
+### Using a PVC and specifying the annonation to create a secure volume   
+    
+If enabling encryption with the storageclass is not preferred, you can also enable it during PVC creation using
+```
+annotations:
+ px/secure: "true"
+```
+- Create PVC with secure annotation
+  ```yaml
+  ▶ cat <<EOF > ./portworx/pvc-secure.yaml
+  kind: PersistentVolumeClaim
+  apiVersion: v1
+  metadata:
+    name: pwx-test-pvc-secure
+    annotations:
+     px/secure: "true"
+  spec:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 1Gi
+    storageClassName: pwx-custom-random-sc
+  EOF
+  ```
+  > In the above, a storageclass that has no secure flag set is used
+
+  ```
+  ▶ oc create -f ./portworx/pvc-secure.yaml 
+  ```
+</details>
+
+### Verify
+<details>
+<summary>List the volumes </summary>
+
+### List the volumes to check for encryption
+
+- List the PVCs. Under the `Volume` column, it shows the Volume names the PVCs are bound to
+  ```
+  ▶ oc get pvc
+  
+  NAME                              STATUS    VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS                  AGE
+  pwx-test-pvc-secure               Bound     pvc-1da0c264-bf2d-4488-8257-9d0e0c1819f9   1Gi        RWO            pwx-custom-random-sc          4m1s
+  pwx-test-pvc-secured-through-sc   Bound     pvc-3a28d2b5-a904-42b6-981b-0023fcdc3941   1Gi        RWO            pwx-custom-random-secure-sc   16m
+  ```
+- From one of the protworx pods, verify Portworx volume list
+
+    ```
+    ▶ oc exec -it portworx-r4bdw  -n kube-system -- /opt/pwx/bin/pxctl volume list
+    ID			        NAME						                SIZE	HA	SHARED	ENCRYPTED	IO_PRIORITY	STATUS		    SNAP-ENABLED	
+    526462371008291079	pvc-1da0c264-bf2d-4488-8257-9d0e0c1819f9	1 GiB	1	no	    yes		    LOW		    up - detached	no
+    973253658930844681	pvc-3a28d2b5-a904-42b6-981b-0023fcdc3941	1 GiB	1	no	    yes		    LOW		    up - detached	no
+
+    ```
+    > Under the `Encrypted` column, you should see `yes` for PVs created through secure SCs or PVCs
+</details>
+
+<details>
+<summary>Delete </summary>
+Delete the resources created to try out creation of encrypted volumes
+
+```
+▶ oc delete -f ./portworx/custom-secure-sc.yaml
+▶ oc delete -f ./portworx/pvc-secured-through-sc.yaml
+▶ oc delete -f ./portworx/pvc-secure.yaml
+```
+</details>
 
 
 ## Cleanup
