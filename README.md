@@ -548,7 +548,7 @@ Delete the resources created to try out creation of encrypted volumes
 
 - Detach volumes
     - [Detach block volumes from worker nodes using console](https://cloud.ibm.com/docs/vpc?topic=vpc-managing-block-storage#detach)
-    - [Detach block volumes from worker nodes using CLI](https://cloud.ibm.com/docs/vpc?topic=vpc-managing-block-storage-cli#detach-vol-attachment-cli)
+    - [Detach block volumes from worker nodes using CLI](https://cloud.ibm.com/docs/openshift?topic=openshift-utilities#vpc_api_detach)
 
 - Delete volumes created
     - [Delete the block volumes using console](https://cloud.ibm.com/docs/vpc?topic=vpc-managing-block-storage#delete)
