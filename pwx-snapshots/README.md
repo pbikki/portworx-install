@@ -4,6 +4,11 @@ The steps also show how Portworx can be configured to store snapshots in IBM Clo
 
 > NOTE: The below steps are only created only for reference. Production usecases might involve additional steps and configuration.
 
+Refer portworx docs on 
+- [Types of snaphshots](https://docs.portworx.com/portworx-install-with-kubernetes/storage-operations/create-snapshots/)
+- [Taking snapshot of a volume from PVC](https://docs.portworx.com/portworx-install-with-kubernetes/storage-operations/kubernetes-storage-101/snapshots/#snapshots)
+- [On-demand cloud snapshots](https://docs.portworx.com/portworx-install-with-kubernetes/storage-operations/create-snapshots/on-demand/snaps-cloud/) (This is the scenario tried out in this document)
+
 ## Prerequisites
 
 - Basic knowledge on COS, IAM, openshift, portworx
